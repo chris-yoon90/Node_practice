@@ -9,7 +9,7 @@ function show(res) {
 	var html = '<h2>FORM</h2>'
 			+ '<ul>'
 			+ items.map(function(item) {
-				return '<li>' + item + '</li>';
+				return '<li><a href="/' + items.indexOf(item) + '">' + item + '</a></li>';
 			}).join('')
 			+ '</ul>'
 			+ '<form method="post" action="/">'
@@ -51,7 +51,6 @@ function notfound404(res) {
 http.createServer(function(req, res) {
 	var path = url.parse(req.url).pathname;
 	if('/' == path) {
-		console.log("Routing method: ", req.method);
 		switch (req.method) { 
 			case 'GET':
 				show(res);
@@ -77,7 +76,7 @@ http.createServer(function(req, res) {
 
 					break;
 				case 'GET':
-
+					res.end('<h1>' + items[i] + '</h1>');
 					break;
 				default:
 					badRequest400(res);
