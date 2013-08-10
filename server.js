@@ -27,6 +27,25 @@ function show(res) {
 	res.end(html);
 }
 
+function showEdit(res, itemIndex) {
+	var html = '<form method="post" action="/' + itemIndex + '/edit">'
+			+ '<input type="hidden" name="_method" value="put" />'
+			+ '<input type="text" name="item" />'
+			+ '<input type="submit" value="Save" />'
+			+ '</form>';
+
+	res.setHeader('Content-Type', 'text/html');
+	res.write('<h1>Edit: ' + items[itemIndex] + '</h2>');
+	res.end(html);
+}
+
+function edit(oldItemIndex, newItem, res) {
+	items[oldItemIndex] = newItem;
+	res.writeHead(301,
+		{Location: 'http://localhost:' + port});
+	res.end();
+}
+
 function add(req, res) {
 	var body = '';
 	req.setEncoding('utf8');
@@ -37,7 +56,7 @@ function add(req, res) {
 		var obj = querystring.parse(body);
 		items.push(obj.item);
 		show(res);
-	})
+	});
 }
 
 function deleteItem(i, res) {
@@ -85,9 +104,20 @@ http.createServer(function(req, res) {
 				switch(req.method) {
 					case 'DELETE':
 					case 'POST':
-					//TODO: add method to check _method data from hidden input field
-						console.log("delete request for: " + items[i]);
-						deleteItem(i, res);
+						var body = '';
+						req.setEncoding('utf8');
+						req.on('data', function(chunk) {
+							body += chunk;
+						});
+						req.on('end', function() {
+							var obj = querystring.parse(body);
+							if (obj._method = 'delete') {
+								console.log("delete request for: " + items[i]);
+								deleteItem(i, res);
+							} else {
+								badRequest400(res);
+							}
+						});
 						break;
 					case 'GET':
 						res.end('<h1>' + items[i] + '</h1>');
@@ -99,10 +129,24 @@ http.createServer(function(req, res) {
 				switch(req.method) {
 					case 'PUT':
 					case 'POST':
-
+						var body = '';
+						req.setEncoding('utf8');
+						req.on('data', function(chunk) {
+							body += chunk;
+						});
+						req.on('end', function() {
+							var obj = querystring.parse(body);
+							if (obj._method = 'put') {
+								var newItem = obj.item;
+								console.log("edit request for: " + items[i] + "to: " + newItem);
+								edit(i, newItem, res);
+							} else {
+								badRequest400(res);
+							}
+						});
 						break;
 					case 'GET':
-						res.end('<h1>Edit for: ' + items[i] + '</h1>');
+						showEdit(res, i);
 						break;
 					default:
 						badRequest400(res);
