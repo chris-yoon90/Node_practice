@@ -6,6 +6,7 @@ var port = 3000;
 var items = [];
 
 function show(res) {
+	//TODO: Fix such that the app will work when there are two or more of the same strings in items
 	var html = '<h2>FORM</h2>'
 			+ '<ul>'
 			+ items.map(function(item) {
@@ -39,31 +40,52 @@ function showEdit(res, itemIndex) {
 	res.end(html);
 }
 
-function edit(oldItemIndex, newItem, res) {
-	items[oldItemIndex] = newItem;
-	res.writeHead(301,
-		{Location: 'http://localhost:' + port});
-	res.end();
-}
-
-function add(req, res) {
+function receiveData(req, res, callback, optionalData) {
 	var body = '';
 	req.setEncoding('utf8');
 	req.on('data', function(chunk) {
 		body += chunk;
 	});
 	req.on('end', function() {
-		var obj = querystring.parse(body);
-		items.push(obj.item);
-		show(res);
+		if (optionalData == null) {
+			callback(res, body);
+		} else {
+			callback(res, body, optionalData);
+		}
 	});
 }
 
-function deleteItem(i, res) {
-	items.splice(i, 1);
-	res.writeHead(301,
+function add(res, body) {
+	var obj = querystring.parse(body);
+	items.push(obj.item);
+	show(res);
+}
+
+function deleteItem(res, body, i) {
+	var obj = querystring.parse(body);
+	if (obj._method == 'delete') {
+		console.log("delete request for: " + items[i]);
+		items.splice(i, 1);
+		res.writeHead(301,
+			{Location: 'http://localhost:' + port});
+		res.end();
+	} else {
+		badRequest400(res);
+	}
+}
+
+function edit(res, body, oldItemIndex) {
+	var obj = querystring.parse(body);
+	if (obj._method == 'put') {
+		var newItem = obj.item;
+		console.log("edit request for: " + items[oldItemIndex] + "to: " + newItem);
+		items[oldItemIndex] = newItem;
+		res.writeHead(301,
 		{Location: 'http://localhost:' + port});
 	res.end();
+	} else {
+		badRequest400(res);
+	}
 }
 
 function badRequest400(res) {
@@ -81,14 +103,13 @@ function notfound404(res) {
 
 http.createServer(function(req, res) {
 	var path = url.parse(req.url).pathname;
-	//console.log(path);
 	if('/' == path) {
 		switch (req.method) { 
 			case 'GET':
 				show(res);
 				break;
 			case 'POST':
-				add(req, res);
+				receiveData(req, res, add);
 				break;
 			default:
 				badRequest400(res);
@@ -104,20 +125,7 @@ http.createServer(function(req, res) {
 				switch(req.method) {
 					case 'DELETE':
 					case 'POST':
-						var body = '';
-						req.setEncoding('utf8');
-						req.on('data', function(chunk) {
-							body += chunk;
-						});
-						req.on('end', function() {
-							var obj = querystring.parse(body);
-							if (obj._method = 'delete') {
-								console.log("delete request for: " + items[i]);
-								deleteItem(i, res);
-							} else {
-								badRequest400(res);
-							}
-						});
+						receiveData(req, res, deleteItem, i);
 						break;
 					case 'GET':
 						res.end('<h1>' + items[i] + '</h1>');
@@ -129,21 +137,7 @@ http.createServer(function(req, res) {
 				switch(req.method) {
 					case 'PUT':
 					case 'POST':
-						var body = '';
-						req.setEncoding('utf8');
-						req.on('data', function(chunk) {
-							body += chunk;
-						});
-						req.on('end', function() {
-							var obj = querystring.parse(body);
-							if (obj._method = 'put') {
-								var newItem = obj.item;
-								console.log("edit request for: " + items[i] + "to: " + newItem);
-								edit(i, newItem, res);
-							} else {
-								badRequest400(res);
-							}
-						});
+						receiveData(req, res, edit, i);
 						break;
 					case 'GET':
 						showEdit(res, i);
