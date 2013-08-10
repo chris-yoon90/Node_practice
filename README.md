@@ -1,2 +1,2 @@
-Node_practice
+CRUD application using PURE node.js
 =============
